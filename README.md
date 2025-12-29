@@ -2,7 +2,7 @@
 A flexible, easy-to-use python module for pygame for rendering vector-based shapes with dynamic video, textures and random colours as well as smooth color transformations.
 ## Features
 - easy to use, just import module, make object and render
-- no calculation needed, just origin, lenght, breadth and height needed for simplest cuboid
+- no calculations needed, just origin, lenght, breadth and height needed for simplest cuboid
 - multiple color options, you can set front,top and right side colors manually or use attributes for random color generation or constant transformations
 - video(s) can be displayed very easily
 - many other features are included
@@ -32,7 +32,7 @@ while run:
 pygame.quit()
 ```
 ## Media Disclaimer
-This project does not contain anu video files.
+This project does not contain any video files.
 User must supply their own video files and ensure they have the rights to use them.
 ## License
 MIT Licence
