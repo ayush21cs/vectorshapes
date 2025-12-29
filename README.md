@@ -12,7 +12,7 @@ youtube link is yet to be inserted here
 ## Installation
 One must pip install pygame and cv2 modules. otherwise it will not work.
 ## Basic Example
-'''python'''import pygame; pygame.init()
+```python```import pygame; pygame.init()
 import vectorshapes as vs  #import module(should be in same file, file name should also be correct)
 screen = pygame.display.set_mode((2560,1440))
 clock = pygame.time.Clock()
