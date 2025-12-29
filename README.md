@@ -8,7 +8,7 @@ A flexible, easy-to-use python module for pygame for rendering vector-based shap
 - many other features are included
 - made from scratch
 ## Demo
-youtube link is yet to be inserted here
+Youtube demo link - https://youtu.be/pFtz9p687Co
 ## Installation
 One must pip install pygame and cv2 modules. otherwise it will not work.
 ## Basic Example
