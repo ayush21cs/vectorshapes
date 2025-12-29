@@ -1,0 +1,171 @@
+import pygame;pygame.init(); pygame.mixer.init();pygame.font.init()
+import copy,random, cv2
+import numpy as np
+class UltraCuboid:
+    vid_list = {}
+    smart_dict = {}
+    smart_surfaces = {}
+    def SmartVideoInit(vid):
+        ret, frame = UltraCuboid.vid_list[vid].read()
+        if not ret:
+            UltraCuboid.vid_list[vid].set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = UltraCuboid.vid_list[vid].read()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        UltraCuboid.smart_surfaces[vid] = frame
+    def __init__(self,origin,length,breadth,height,front_color=(255,0,0),top_color=(0,255,0),right_color=(0,0,255),FTRwidth=(0,0,0),RNGRGB=False,RGBmode=False,video_name="",brightness = 1,vid_delay=0):
+        self.origin = list(origin)
+        self.brightness = brightness
+        self.vid_delay = vid_delay
+        self.video_name = video_name
+        self.attached = False if self.video_name == "" else True
+        self.screen = pygame.display.get_surface()
+        self.RNGRGB = RNGRGB
+        self.RGBmode = RGBmode
+        self.FW,self.TW,self.RW = FTRwidth
+        self.Fd,self.Ff,self.Fg = 3,4,5
+        self.Td,self.Tf,self.Tg = 3,4,5
+        self.Rd,self.Rf,self.Rg = 3,4,5
+        r=random.randint
+        if RNGRGB: self.fcolor,self.tcolor,self.rcolor = (r(50,255),r(50,255),r(50,255)),(r(50,255),r(50,255),r(50,255)),(r(50,255),r(50,255),r(50,255))
+        else: self.fcolor,self.tcolor,self.rcolor = front_color,top_color,right_color
+        self.FR,self.FG,self.FB = self.fcolor
+        self.TR,self.TG,self.TB = self.tcolor
+        self.RR,self.RG,self.RB = self.rcolor
+        self.lenght = length
+        self.breadth = breadth
+        self.height = height
+
+        self.front = [[self.origin[0]+self.FW/2,                    self.origin[1]+self.FW/2],
+                      [self.origin[0]+self.lenght-self.FW/2,        self.origin[1]+self.FW/2],
+                      [self.origin[0]+self.lenght-self.FW/2,        self.origin[1]+self.height-self.FW/2],
+                      [self.origin[0]+self.FW/2,                    self.origin[1]+self.height-self.FW/2]]
+        
+        self.top =   [[self.origin[0]+self.TW/2,                            self.origin[1]-self.TW/2],
+                      [self.origin[0]+self.breadth/2+self.TW/2,             self.origin[1]-self.breadth/2-self.TW/2],
+                      [self.origin[0]+self.lenght+self.breadth/2-self.TW/8, self.origin[1]-self.breadth/2-self.TW/2],
+                      [self.origin[0]+self.lenght-self.TW/8,                self.origin[1]-self.TW/2]] 
+        
+        self.right = [[self.origin[0]+self.lenght+self.RW/2,                self.origin[1]+self.RW/8],
+                      [self.origin[0]+self.lenght+self.breadth/2+self.RW/2, self.origin[1]-self.breadth/2+self.RW/8],
+                      [self.origin[0]+self.lenght+self.breadth/2+self.RW/2, self.origin[1]+self.height-self.breadth/2-self.RW/2],
+                      [self.origin[0]+self.lenght+self.RW/2,                self.origin[1]+self.height-self.RW/2]]
+        
+        self.cube = [self.front,self.top,self.right]
+        self.RGBval = [self.fcolor,self.tcolor,self.rcolor]
+        self.store = copy.deepcopy(self.cube)
+        if self.attached: 
+            self.cap = cv2.VideoCapture(video_name)
+            if video_name not in UltraCuboid.vid_list.keys(): 
+                UltraCuboid.vid_list[video_name] = cv2.VideoCapture(video_name)
+                UltraCuboid.smart_dict[video_name] = []
+            if self.front[0] not in UltraCuboid.smart_dict[video_name]:
+                UltraCuboid.smart_dict[video_name].append((self.front[0],(self.lenght,self.height)))
+    def render(self,smart_render=False):
+        pygame.draw.polygon(self.screen,(self.FR,self.FG,self.FB),self.front,width=self.FW)
+        pygame.draw.polygon(self.screen,(self.TR,self.TG,self.TB),self.top,width=self.TW)
+        pygame.draw.polygon(self.screen,(self.RR,self.RG,self.RB),self.right,width=self.RW)
+        if self.attached and smart_render:
+            frame = cv2.resize(UltraCuboid.smart_surfaces[self.video_name],(int(self.lenght),int(self.height)))
+            surface = pygame.surfarray.make_surface(np.rot90(frame))
+            self.screen.blit(surface,self.front[0])
+        elif self.attached:
+            try: ret, frame = self.cap.read()
+            except: raise Exception("video not found")
+            if not ret: 
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = self.cap.read() 
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.resize(frame, (int(self.lenght), int(self.height)))
+            frame =frame*self.brightness
+            surface = pygame.surfarray.make_surface(np.rot90(frame))
+            self.screen.blit(surface, (self.front[0]))
+            cv2.waitKey(self.vid_delay)
+        if self.RGBmode:
+            if self.FR <= 10:    self.Fd = abs(self.Fd)
+            elif self.FR >= 245: self.Fd = -self.Fd
+            if self.FG <= 10:    self.Ff = abs(self.Ff)
+            elif self.FG >= 245: self.Ff = -self.Ff
+            if self.FB <= 10:    self.Fg = abs(self.Fg)
+            elif self.FB >= 245: self.Fg = -self.Fg
+            if self.TR <= 10:    self.Td = abs(self.Td)
+            elif self.TR >= 245: self.Td = -self.Td
+            if self.TG <= 10:    self.Tf = abs(self.Tf)
+            elif self.TG >= 245: self.Tf = -self.Tf
+            if self.TB <= 10:    self.Tg = abs(self.Tg)
+            elif self.TB >= 245: self.Tg = -self.Tg
+            if self.RR <= 10:    self.Rd = abs(self.Rd)
+            elif self.RR >= 245: self.Rd = -self.Rd
+            if self.RG <= 10:    self.Rf = abs(self.Rf)
+            elif self.RG >= 245: self.Rf = -self.Rf
+            if self.RB <= 10:    self.Rg = abs(self.Rg)
+            elif self.RB >= 245: self.Rg = -self.Rg
+            self.TR += self.Td
+            self.TG += self.Tf
+            self.TB += self.Tg
+            self.FR += self.Fd
+            self.FG += self.Ff
+            self.FB += self.Fg
+            self.RR += self.Rd
+            self.RG += self.Rf
+            self.RB += self.Rg
+            return True
+    def move(self,x,y):
+        for sides in self.cube:
+            for coords in sides:
+                coords[0]+=x
+                coords[1]+=y
+    def write(self,message,font_size=20,font_type="arial",txt_color=(255,255,255)):
+        font = pygame.font.SysFont(font_type,font_size)
+        txt = font.render(message,True,txt_color)
+        self.screen.blit(txt,(self.front[0][0]+self.FW*2,self.front[0][1]+self.lenght/4))
+    def update(self,mx,my,perfectlatch=False):
+        for i in range(len(self.cube)):
+            for j in range(len(self.cube[i])):
+                if not perfectlatch:
+                    self.cube[i][j][0] = mx + self.store[i][j][0]-self.store[0][0][0]
+                    self.cube[i][j][1] = my + self.store[i][j][1]-self.store[0][0][1]
+                else:
+                    self.cube[i][j][0] = mx + self.store[i][j][0]
+                    self.cube[i][j][1] = my + self.store[i][j][1]
+class Cuboid:
+    def __init__(self,origin,length,breadth,height,front_color=(255,0,0),top_color=(0,255,0),right_color=(0,0,255),width=0,RNGRGB=False):
+        import copy,math,random
+        self.origin = list(origin);temporigin = self.origin.copy()
+        self.screen = pygame.display.get_surface()
+        self.RNGRGB = RNGRGB
+        self.width = width
+        self.a = self.b = self.c = 0
+        self.d = 0.03
+        self.f = 0.04
+        self.g = 0.05
+        r=random.randint
+        if RNGRGB: self.fcolor,self.tcolor,self.rcolor = (r(50,255),r(50,255),r(50,255)),(r(50,255),r(50,255),r(50,255)),(r(50,255),r(50,255),r(50,255))
+        else: self.fcolor,self.tcolor,self.rcolor = front_color,top_color,right_color
+        self.clist = [self.fcolor,self.tcolor,self.rcolor]
+        self.lenght = length
+        self.breadth = breadth
+        self.height = height
+        self.front = [self.origin,[self.origin[0]+self.lenght,self.origin[1]],[self.origin[0]+self.lenght,self.origin[1]+self.height],[self.origin[0],self.origin[1]+self.height]]
+        self.top = [temporigin,[self.origin[0]+self.breadth/2,self.origin[1]-self.breadth/2],[self.origin[0]+self.lenght+self.breadth/2,self.origin[1]-self.breadth/2],[self.origin[0]+self.lenght,self.origin[1]]]
+        self.right = [[self.origin[0]+self.lenght,self.origin[1]],[self.origin[0]+self.lenght+self.breadth/2,self.origin[1]-self.breadth/2],[self.origin[0]+self.lenght+self.breadth/2,self.origin[1]+self.height-self.breadth/2],[self.origin[0]+self.lenght,self.origin[1]+self.height]]
+        self.cube = [self.front,self.top,self.right]
+        self.RGBval = [self.fcolor,self.tcolor,self.rcolor]
+        self.store = copy.deepcopy(self.cube)
+    def render(self):
+        pygame.draw.polygon(self.screen,self.fcolor,self.front,width=self.width)
+        pygame.draw.polygon(self.screen,self.tcolor,self.top,width=self.width)
+        pygame.draw.polygon(self.screen,self.rcolor,self.right,width=self.width)
+    def move(self,x,y):
+        for sides in self.cube:
+            for coords in sides:
+                coords[0]+=x
+                coords[1]+=y
+    def update(self,mx,my,perfectlatch=False):
+        for i in range(len(self.cube)):
+            for j in range(len(self.cube[i])):
+                if not perfectlatch:
+                    self.cube[i][j][0] = mx + self.store[i][j][0]-self.store[0][0][0]
+                    self.cube[i][j][1] = my + self.store[i][j][1]-self.store[0][0][1]
+                else:
+                    self.cube[i][j][0] = mx + self.store[i][j][0]
+                    self.cube[i][j][1] = my + self.store[i][j][1]
