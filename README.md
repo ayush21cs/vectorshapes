@@ -15,10 +15,10 @@ One must pip install pygame and cv2 modules. otherwise it will not work.
 ```python
 import pygame; pygame.init()
 import vectorshapes as vs  #import module(should be in same file, file name should also be correct)
-screen = pygame.display.set_mode((2560,1440))
+screen = pygame.display.set_mode((600,500))
 clock = pygame.time.Clock()
 run = True
-cube = vs.UltraCuboid((100,100),100,200,300) #make a cuboid
+cube = vs.UltraCuboid((200,200),100,200,300) #make a cuboid
 while run:
     screen.fill((0,0,0))
     mx,my = pygame.mouse.get_pos()
@@ -28,7 +28,7 @@ while run:
             run = False
     cube.render() #render
     pygame.display.flip()
-    clock.tick(100)
+    clock.tick(60)
 pygame.quit()
 ```
 ## Media Disclaimer
