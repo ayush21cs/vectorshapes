@@ -1,32 +1,44 @@
 import pygame;pygame.init(); pygame.mixer.init();pygame.font.init()
 import copy,random, cv2
 import numpy as np
+def _generate_colors():
+    cs = []
+    for i in range(3):
+        c=[]
+        for j in range(3):
+            c.append(random.randint(50,255))
+        cs.append(c)
+    return cs
+def _reset(cap):
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    return cap.read()
 class UltraCuboid:
     vid_list = {}
-    smart_dict = {}
     smart_surfaces = {}
     def SmartVideoInit(vid):
+        '''SmartVideoInit() allows blitting common video frame to all UltraCuboid surfaces that are being rendered through render() function, 
+        do not forget to set smart_render to True and also, 
+        SmartVideoInit() should be used ONLY ONCE PER LOOP and if looping through video list (for example: [vid1, vid2, vid3,....]),
+        then make sure the name of the vid only come once in the list, else it will skip frames'''
         ret, frame = UltraCuboid.vid_list[vid].read()
-        if not ret:
-            UltraCuboid.vid_list[vid].set(cv2.CAP_PROP_POS_FRAMES, 0)
-            ret, frame = UltraCuboid.vid_list[vid].read()
+        if not ret: ret, frame = _reset(UltraCuboid.vid_list[vid])
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         UltraCuboid.smart_surfaces[vid] = frame
-    def __init__(self,origin,length,breadth,height,front_color=(255,0,0),top_color=(0,255,0),right_color=(0,0,255),FTRwidth=(0,0,0),RNGRGB=False,RGBmode=False,video_name="",brightness = 1,vid_delay=0):
+    def __init__(self,origin,length,height,breadth=0,front_color=(255,0,0),top_color=(0,255,0),right_color=(0,0,255),FTRwidth=(0,0,0),RNGRGB=False,RGBmode=False,video_name="",smart_render=True,brightness = 1,starting_frame=0):
         self.origin = list(origin)
         self.brightness = brightness
-        self.vid_delay = vid_delay
         self.video_name = video_name
+        self.SF = starting_frame
+        self.SR = smart_render
         self.attached = False if self.video_name == "" else True
         self.screen = pygame.display.get_surface()
-        self.RNGRGB = RNGRGB
         self.RGBmode = RGBmode
         self.FW,self.TW,self.RW = FTRwidth
-        self.Fd,self.Ff,self.Fg = 3,4,5
-        self.Td,self.Tf,self.Tg = 3,4,5
-        self.Rd,self.Rf,self.Rg = 3,4,5
+        self.Fdr,self.Fdg,self.Fdb = 3,4,5
+        self.Tdr,self.Tdg,self.Tdb = 3,4,5
+        self.Rdr,self.Rdg,self.Rdb = 3,4,5
         r=random.randint
-        if RNGRGB: self.fcolor,self.tcolor,self.rcolor = (r(50,255),r(50,255),r(50,255)),(r(50,255),r(50,255),r(50,255)),(r(50,255),r(50,255),r(50,255))
+        if RNGRGB: self.fcolor,self.tcolor,self.rcolor = _generate_colors()
         else: self.fcolor,self.tcolor,self.rcolor = front_color,top_color,right_color
         self.FR,self.FG,self.FB = self.fcolor
         self.TR,self.TG,self.TB = self.tcolor
@@ -51,82 +63,82 @@ class UltraCuboid:
                       [self.origin[0]+self.lenght+self.RW/2,                self.origin[1]+self.height-self.RW/2]]
         
         self.cube = [self.front,self.top,self.right]
-        self.RGBval = [self.fcolor,self.tcolor,self.rcolor]
         self.store = copy.deepcopy(self.cube)
-        if self.attached: 
-            self.cap = cv2.VideoCapture(video_name)
+        if self.attached:
+            if not self.SR:
+                if video_name not in UltraCuboid.vid_list: self.cap = cv2.VideoCapture(video_name)
+                if self.SF != 0: self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.SF)
             if video_name not in UltraCuboid.vid_list.keys(): 
                 UltraCuboid.vid_list[video_name] = cv2.VideoCapture(video_name)
-                UltraCuboid.smart_dict[video_name] = []
-            if self.front[0] not in UltraCuboid.smart_dict[video_name]:
-                UltraCuboid.smart_dict[video_name].append((self.front[0],(self.lenght,self.height)))
-    def render(self,smart_render=False):
+    def render(self):
+        '''Render the UltraCuboid object using render(), set smart_render to True when looping through Ultrcuboid objects and they (not necessarily all) have same video reference'''
         pygame.draw.polygon(self.screen,(self.FR,self.FG,self.FB),self.front,width=self.FW)
         pygame.draw.polygon(self.screen,(self.TR,self.TG,self.TB),self.top,width=self.TW)
         pygame.draw.polygon(self.screen,(self.RR,self.RG,self.RB),self.right,width=self.RW)
-        if self.attached and smart_render:
-            frame = cv2.resize(UltraCuboid.smart_surfaces[self.video_name],(int(self.lenght),int(self.height)))
-            surface = pygame.surfarray.make_surface(np.rot90(frame))
-            self.screen.blit(surface,self.front[0])
+        if self.attached and self.SR:
+            if self.video_name in UltraCuboid.smart_surfaces:
+                frame = cv2.resize(UltraCuboid.smart_surfaces[self.video_name],(int(self.lenght),int(self.height)))
+                frame = frame*self.brightness
+                frame = np.fliplr(frame)
+                surface = pygame.surfarray.make_surface(np.rot90(frame))
+                self.screen.blit(surface,self.front[0])
+            else: pass
         elif self.attached:
-            try: ret, frame = self.cap.read()
-            except: raise Exception("video not found")
-            if not ret: 
-                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                ret, frame = self.cap.read() 
+            ret, frame = self.cap.read()
+            if not ret: ret, frame = _reset(self.cap)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.resize(frame, (int(self.lenght), int(self.height)))
-            frame =frame*self.brightness
+            frame = np.fliplr(frame*self.brightness)
             surface = pygame.surfarray.make_surface(np.rot90(frame))
             self.screen.blit(surface, (self.front[0]))
-            cv2.waitKey(self.vid_delay)
         if self.RGBmode:
-            if self.FR <= 10:    self.Fd = abs(self.Fd)
-            elif self.FR >= 245: self.Fd = -self.Fd
-            if self.FG <= 10:    self.Ff = abs(self.Ff)
-            elif self.FG >= 245: self.Ff = -self.Ff
-            if self.FB <= 10:    self.Fg = abs(self.Fg)
-            elif self.FB >= 245: self.Fg = -self.Fg
-            if self.TR <= 10:    self.Td = abs(self.Td)
-            elif self.TR >= 245: self.Td = -self.Td
-            if self.TG <= 10:    self.Tf = abs(self.Tf)
-            elif self.TG >= 245: self.Tf = -self.Tf
-            if self.TB <= 10:    self.Tg = abs(self.Tg)
-            elif self.TB >= 245: self.Tg = -self.Tg
-            if self.RR <= 10:    self.Rd = abs(self.Rd)
-            elif self.RR >= 245: self.Rd = -self.Rd
-            if self.RG <= 10:    self.Rf = abs(self.Rf)
-            elif self.RG >= 245: self.Rf = -self.Rf
-            if self.RB <= 10:    self.Rg = abs(self.Rg)
-            elif self.RB >= 245: self.Rg = -self.Rg
-            self.TR += self.Td
-            self.TG += self.Tf
-            self.TB += self.Tg
-            self.FR += self.Fd
-            self.FG += self.Ff
-            self.FB += self.Fg
-            self.RR += self.Rd
-            self.RG += self.Rf
-            self.RB += self.Rg
-            return True
-    def move(self,x,y):
+            if self.FR <= 10:    self.Fdr = abs(self.Fdr)
+            elif self.FR >= 245: self.Fdr = -self.Fdr
+            if self.FG <= 10:    self.Fdg = abs(self.Fdg)
+            elif self.FG >= 245: self.Fdg = -self.Fdg
+            if self.FB <= 10:    self.Fdb = abs(self.Fdb)
+            elif self.FB >= 245: self.Fdb = -self.Fdb
+            if self.TR <= 10:    self.Tdr = abs(self.Tdr)
+            elif self.TR >= 245: self.Tdr = -self.Tdr
+            if self.TG <= 10:    self.Tdg = abs(self.Tdg)
+            elif self.TG >= 245: self.Tdg = -self.Tdg
+            if self.TB <= 10:    self.Tdb = abs(self.Tdb)
+            elif self.TB >= 245: self.Tdb = -self.Tdb
+            if self.RR <= 10:    self.Rdr = abs(self.Rdr)
+            elif self.RR >= 245: self.Rdr = -self.Rdr
+            if self.RG <= 10:    self.Rdg = abs(self.Rdg)
+            elif self.RG >= 245: self.Rdg = -self.Rdg
+            if self.RB <= 10:    self.Rdb = abs(self.Rdb)
+            elif self.RB >= 245: self.Rdb = -self.Rdb
+            self.TR += self.Tdr
+            self.TG += self.Tdg
+            self.TB += self.Tdb
+            self.FR += self.Fdr
+            self.FG += self.Fdg
+            self.FB += self.Fdb
+            self.RR += self.Rdr
+            self.RG += self.Rdg
+            self.RB += self.Rdb
+    def move(self,x=0,y=0):
         for sides in self.cube:
             for coords in sides:
                 coords[0]+=x
                 coords[1]+=y
     def write(self,message,font_size=20,font_type="arial",txt_color=(255,255,255)):
+        '''write() overlays a text on the UltrCuboid object, not very practical and requires proper positioning in the main loop'''
         font = pygame.font.SysFont(font_type,font_size)
         txt = font.render(message,True,txt_color)
         self.screen.blit(txt,(self.front[0][0]+self.FW*2,self.front[0][1]+self.lenght/4))
-    def update(self,mx,my,perfectlatch=False):
+    def update(self,x,y,perfectlatch=False):
+        '''update() allows user to move the UltraCuboid object to (x,y) position, set perfectlatch to True if looping through UC objects and moving at the same time'''
         for i in range(len(self.cube)):
             for j in range(len(self.cube[i])):
                 if not perfectlatch:
-                    self.cube[i][j][0] = mx + self.store[i][j][0]-self.store[0][0][0]
-                    self.cube[i][j][1] = my + self.store[i][j][1]-self.store[0][0][1]
+                    self.cube[i][j][0] = x + self.store[i][j][0]-self.store[0][0][0]
+                    self.cube[i][j][1] = y + self.store[i][j][1]-self.store[0][0][1]
                 else:
-                    self.cube[i][j][0] = mx + self.store[i][j][0]
-                    self.cube[i][j][1] = my + self.store[i][j][1]
+                    self.cube[i][j][0] = x + self.store[i][j][0]
+                    self.cube[i][j][1] = y + self.store[i][j][1]
 class Cuboid:
     def __init__(self,origin,length,breadth,height,front_color=(255,0,0),top_color=(0,255,0),right_color=(0,0,255),width=0,RNGRGB=False):
         import copy,math,random
