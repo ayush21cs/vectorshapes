@@ -1,8 +1,9 @@
 import pygame;pygame.init(); pygame.mixer.init();pygame.font.init()
 import copy,random, cv2
 import numpy as np
+from typing import Literal
 def _generate_colors(): 
-    return [[random.randint(50,255) for j in range(3)] for i in range(3)]
+    return [[random.randint(50,255) for j in "123"] for i in "123456"]
 def _delta():
     r = random.randint
     rl = []
@@ -10,19 +11,30 @@ def _delta():
         n = r(3,5)
         if n not in rl: rl.append(n)
     return rl
-def _reset(cap):
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+def _reset(cap,frame=0):
+    cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
     return cap.read()
-def _bounce(v, dv, low=10, high=245):
+def _check(v, dv, low=10, high=245):
     if v <= low:
         dv = abs(dv)
     elif v >= high:
         dv = -dv
     return v + dv, dv
+def _bounce(lc,ldc):
+    l=[]
+    dl=[]
+    for i in range(3):
+        v,dv=_check(lc[i],ldc[i])
+        l.append(v),dl.append(dv)
+    return l,dl
 class Cuboid:
     vid_list = {}
     smart_surfaces = {}
-    def SmartVideoInit(vid):
+    @staticmethod
+    def SmartVidReset(vid:str,frame:int=0):
+        _reset(Cuboid.vid_list[vid],frame)
+    @staticmethod
+    def CacheVideoFrames(vid:str):
         '''SmartVideoInit() allows blitting common video frame to all UltraCuboid surfaces that are being rendered through render() function, 
         do not forget to set smart_render to True and also, 
         SmartVideoInit() should be used ONLY ONCE PER LOOP and if looping through video list (for example: [vid1, vid2, vid3,....]),
@@ -31,99 +43,114 @@ class Cuboid:
         if not ret: ret, frame = _reset(Cuboid.vid_list[vid])
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         Cuboid.smart_surfaces[vid] = frame
-    def __init__(self,origin,length,height,breadth=0,front_color=(255,0,0),top_color=(0,255,0),right_color=(0,0,255),FTRwidth=(0,0,0),RNGRGB=False,RGBmode=False,video_name="",brightness = 1,starting_frame=0,smart_render=True):
+    def __init__(self,origin:tuple[int,int],length:int,height:int,breadth:int=0,RGBmode:bool=False,FTRBbLwidth:tuple|list=(0,0,0,0,0,0),video_name:str="",smart_render:bool=True):
         self.origin = list(origin)
-        self.brightness = brightness
+        self.brightness = 1
         self.video_name = video_name
-        self.SF = starting_frame
         self.SR = smart_render
         self.attached = False if self.video_name == "" else True
-        self.screen = pygame.display.get_surface()
         self.RGBmode = RGBmode
-        self.FW,self.TW,self.RW = FTRwidth
-        self.Fdr,self.Fdg,self.Fdb = _delta()
-        self.Tdr,self.Tdg,self.Tdb = _delta()
-        self.Rdr,self.Rdg,self.Rdb = _delta()
-        if RNGRGB: self.fcolor,self.tcolor,self.rcolor = _generate_colors()
-        else: self.fcolor,self.tcolor,self.rcolor = front_color,top_color,right_color
-        self.FR,self.FG,self.FB = self.fcolor
-        self.TR,self.TG,self.TB = self.tcolor
-        self.RR,self.RG,self.RB = self.rcolor
-        self.lenght = length
-        self.breadth = breadth
-        self.height = height
-
-        self.front = [[self.origin[0]+self.FW/2,                    self.origin[1]+self.FW/2],
-                      [self.origin[0]+self.lenght-self.FW/2,        self.origin[1]+self.FW/2],
-                      [self.origin[0]+self.lenght-self.FW/2,        self.origin[1]+self.height-self.FW/2],
-                      [self.origin[0]+self.FW/2,                    self.origin[1]+self.height-self.FW/2]]
+        self.widths=self.FW,self.TW,self.RW,self.BW,self.bW,self.LW = list(FTRBbLwidth)
+        self.deltavals=self.fdc,self.tdc,self.rdc,self.badc,self.bodc,self.ldc=[_delta() for i in range(6)]
+        self.colors=_generate_colors()
+        self.lenght = l = length
+        self.breadth = b = breadth
+        self.height = h = height
+        x,y=self.origin[0],self.origin[1]
+        self.front = [[x+self.FW/2,   y+self.FW/2],
+                      [x+l-self.FW/2, y+self.FW/2],
+                      [x+l-self.FW/2, y+h-self.FW/2],
+                      [x+self.FW/2,   y+h-self.FW/2]]
         
-        self.top =   [[self.origin[0]+self.TW/2,                            self.origin[1]-self.TW/2],
-                      [self.origin[0]+self.breadth/2+self.TW/2,             self.origin[1]-self.breadth/2-self.TW/2],
-                      [self.origin[0]+self.lenght+self.breadth/2-self.TW/8, self.origin[1]-self.breadth/2-self.TW/2],
-                      [self.origin[0]+self.lenght-self.TW/8,                self.origin[1]-self.TW/2]] 
+        self.top =   [[x+self.TW/2,       y-self.TW/2],
+                      [x+b/2+self.TW/2,   y-b/2-self.TW/2],
+                      [x+l+b/2-self.TW/8, y-b/2-self.TW/2],
+                      [x+l-self.TW/8,     y-self.TW/2]] 
         
-        self.right = [[self.origin[0]+self.lenght+self.RW/2,                self.origin[1]+self.RW/8],
-                      [self.origin[0]+self.lenght+self.breadth/2+self.RW/2, self.origin[1]-self.breadth/2+self.RW/8],
-                      [self.origin[0]+self.lenght+self.breadth/2+self.RW/2, self.origin[1]+self.height-self.breadth/2-self.RW/2],
-                      [self.origin[0]+self.lenght+self.RW/2,                self.origin[1]+self.height-self.RW/2]]
+        self.right = [[x+l+self.RW/2,     y+self.RW/8],
+                      [x+l+b/2+self.RW/2, y-b/2+self.RW/8],
+                      [x+l+b/2+self.RW/2, y+h-b/2-self.RW/2],
+                      [x+l+self.RW/2,     y+h-self.RW/2]]
         
-        self.cube = [self.front,self.top,self.right]
-        self.store = copy.deepcopy(self.cube)
+        self.bottom = [[x+self.bW/2,       y+h-self.bW/2],
+                      [x+b/2+self.bW/2,   y+h-b/2-self.bW/2],
+                      [x+l+b/2-self.bW/8, y+h-b/2-self.bW/2],
+                      [x+l-self.bW/8,     y+h-self.bW/2]]
+        
+        self.left = [[x+self.RW/2,     y+self.RW/8],
+                      [x+b/2+self.RW/2, y-b/2+self.RW/8],
+                      [x+b/2+self.RW/2, y+h-b/2-self.RW/2],
+                      [x+self.RW/2,     y+h-self.RW/2]]
+        
+        self.back = [[x+b/2+self.TW/2,   y-b/2-self.TW/2],
+                     [x+l+b/2-self.TW/8, y-b/2-self.TW/2],
+                      [x+l+b/2+self.RW/2, y+h-b/2-self.RW/2],
+                      [x+b/2+self.RW/2, y+h-b/2-self.RW/2]]
+        self.meanpos = [self.front,self.top,self.right,self.back,self.bottom,self.left]
+        self.cube=[self.meanpos,self.colors,self.deltavals,self.widths]
+        self.store = copy.deepcopy(self.meanpos)
         if self.attached:
             if not self.SR:
-                if video_name not in Cuboid.vid_list: self.cap = cv2.VideoCapture(video_name)
-                if self.SF != 0: self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.SF)
-            if video_name not in Cuboid.vid_list: 
+                self.cap = cv2.VideoCapture(video_name)
+            elif video_name not in Cuboid.vid_list: 
                 Cuboid.vid_list[video_name] = cv2.VideoCapture(video_name)
-    def render(self):
+    def render(self,screen:pygame.Surface):
         '''Render the UltraCuboid object using render()'''
-        pygame.draw.polygon(self.screen,(self.FR,self.FG,self.FB),self.front,width=self.FW)
-        pygame.draw.polygon(self.screen,(self.TR,self.TG,self.TB),self.top,width=self.TW)
-        pygame.draw.polygon(self.screen,(self.RR,self.RG,self.RB),self.right,width=self.RW)
-        if self.attached and self.SR:
-            if self.video_name in Cuboid.smart_surfaces:
-                frame = cv2.resize(Cuboid.smart_surfaces[self.video_name],(int(self.lenght),int(self.height)))
-                frame = frame*self.brightness
-                frame = np.fliplr(frame)
+        for i in range(5,-1,-1):
+            pygame.draw.polygon(screen,self.cube[1][i],self.cube[0][i],width=self.cube[3][i])
+            if self.RGBmode:
+                self.cube[1][i], self.cube[2][i] = _bounce(self.cube[1][i], self.cube[2][i])
+        if self.attached:
+            blit=True
+            if self.SR:
+                if self.video_name in Cuboid.smart_surfaces:
+                    frame = Cuboid.smart_surfaces[self.video_name]
+                else:
+                    blit=False
+            else:
+                ret, frame = self.cap.read()
+                if not ret: ret, frame = _reset(self.cap)
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if blit:
+                frame = cv2.resize(frame, (int(self.lenght), int(self.height)))
+                frame = np.fliplr(frame*self.brightness)
                 surface = pygame.surfarray.make_surface(np.rot90(frame))
-                self.screen.blit(surface,self.front[0])
-            else: pass
-        elif self.attached:
-            ret, frame = self.cap.read()
-            if not ret: ret, frame = _reset(self.cap)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.resize(frame, (int(self.lenght), int(self.height)))
-            frame = np.fliplr(frame*self.brightness)
-            surface = pygame.surfarray.make_surface(np.rot90(frame))
-            self.screen.blit(surface, (self.front[0]))
-        if self.RGBmode:
-            self.FR, self.Fdr = _bounce(self.FR, self.Fdr)
-            self.FG, self.Fdg = _bounce(self.FG, self.Fdg)
-            self.FB, self.Fdb = _bounce(self.FB, self.Fdb)
-            self.TR, self.Tdr = _bounce(self.TR, self.Tdr)
-            self.TG, self.Tdg = _bounce(self.TG, self.Tdg)
-            self.TB, self.Tdb = _bounce(self.TB, self.Tdb)
-            self.RR, self.Rdr = _bounce(self.RR, self.Rdr)
-            self.RG, self.Rdg = _bounce(self.RG, self.Rdg)
-            self.RB, self.Rdb = _bounce(self.RB, self.Rdb)
-    def move(self,x=0,y=0):
+                screen.blit(surface, (self.front[0]))
+    def move(self,x:int,y:int=0):
         for sides in self.cube:
             for coords in sides:
                 coords[0]+=x
                 coords[1]+=y
-    def write(self,message,font_size=20,font_type="arial",txt_color=(255,255,255)):
-        '''write() overlays a text on the UltrCuboid object, not very practical and requires proper positioning in the main loop'''
+    def write(self,screen:pygame.surface,message:str,font_size:int=20,font_type:int="arial",txt_color:tuple|list=(255,255,255)):
+        '''write() overlays a text on the Cuboid object, not very practical, it will lag if called too many times and requires proper positioning in the main loop'''
         font = pygame.font.SysFont(font_type,font_size)
         txt = font.render(message,True,txt_color)
-        self.screen.blit(txt,(self.front[0][0]+self.FW*2,self.front[0][1]+self.lenght/4))
-    def update(self,x,y,perfectlatch=False):
-        '''update() allows user to move the UltraCuboid object to (x,y) position, set perfectlatch to True if looping through UC objects and moving at the same time'''
-        for i in range(len(self.cube)):
-            for j in range(len(self.cube[i])):
-                if not perfectlatch:
-                    self.cube[i][j][0] = x + self.store[i][j][0]-self.store[0][0][0]
-                    self.cube[i][j][1] = y + self.store[i][j][1]-self.store[0][0][1]
-                else:
-                    self.cube[i][j][0] = x + self.store[i][j][0]
-                    self.cube[i][j][1] = y + self.store[i][j][1]
+        screen.blit(txt,(self.front[0][0]+self.FW*2,self.front[0][1]+self.lenght/4))
+    def moveTo(self,x:int,y:int,latch:bool=False):
+        '''update() allows user to move the Cuboid object to (x,y) position, set latch to True if looping through UC objects and moving at the same time'''
+        for i in range(len(self.meanpos)):
+            for j in range(len(self.meanpos[i])):
+                self.meanpos[i][j][0] = x + self.store[i][j][0]
+                self.meanpos[i][j][1] = y + self.store[i][j][1]
+                if not latch:
+                    self.meanpos[i][j][0] -=self.store[0][0][0]
+                    self.meanpos[i][j][1] -=self.store[0][0][1]
+    def paint(self,color_dict:dict[Literal["front","top","right","back","bottom","left"],list[int,int,int]],set_default=False):
+        if set_default:
+            self.colors[0] = [255,0,0]
+            self.colors[1] = [0,255,0]
+            self.colors[2] = [0,0,255]
+            self.colors[3] = [255,255,0]
+            self.colors[4] = [255,0,255]
+            self.colors[5] = [0,255,255]
+            return
+        d=color_dict
+        t="front","top","right","back","bottom","left"
+        for c in d.keys():
+            self.colors[t.index(c)]=d[c]
+    def configureVid(self,brightness:int|float=1,frame:int=None):
+        self.brightness=brightness
+        if frame != None:
+            self.SR=False
+            self.cap=cv2.VideoCapture(self.video_name)
+            _reset(self.cap,frame)
