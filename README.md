@@ -34,7 +34,7 @@ pygame.quit()
 ## Media Disclaimer
 This project does not contain any video files.
 User must supply their own video files and ensure they have the rights to use them.
-##Note from developer
+## Note from developer
 latest version may contain bugs.
 ## License
 MIT Licence
