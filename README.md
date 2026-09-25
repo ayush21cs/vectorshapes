@@ -3,7 +3,7 @@ A flexible, easy-to-use python module for pygame for rendering vector-based shap
 ## Features
 - easy to use, just import module, make object and render
 - no calculations needed, just origin, lenght, breadth and height needed for simplest cuboid
-- multiple color options, you can set front,top and right side colors manually or use attributes for random color generation or constant transformations
+- multiple color options, you can set front, top, right, back, bottom, left side colors manually or use attributes for random color generation or constant transformations
 - video(s) can be displayed very easily
 - many other features are included
 - made from scratch
@@ -35,7 +35,7 @@ pygame.quit()
 This project does not contain any video files.
 User must supply their own video files and ensure they have the rights to use them.
 ## Note from developer
-latest version may contain bugs.
+latest version may contain bugs. Work in progress.
 ## License
 MIT Licence
 ## Author
