@@ -18,7 +18,7 @@ import vectorshapes as vs  #import module(should be in same file, file name shou
 screen = pygame.display.set_mode((600,500))
 clock = pygame.time.Clock()
 run = True
-cube = vs.UltraCuboid((200,200),100,200,300) #make a cuboid
+cube = vs.Cuboid((200,200),100,200,300) #make a cuboid
 while run:
     screen.fill((0,0,0))
     mx,my = pygame.mouse.get_pos()
@@ -26,7 +26,7 @@ while run:
     for e in pygame.event.get():
         if e.type == pygame.QUIT or k[pygame.K_ESCAPE]:
             run = False
-    cube.render() #render
+    cube.render(screen) #render
     pygame.display.flip()
     clock.tick(60)
 pygame.quit()
